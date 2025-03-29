@@ -1,0 +1,54 @@
+trigger:
+- master  # Ejecutar cuando haya cambios en la rama master
+
+pool:
+  vmImage: 'ubuntu-latest'  # Máquina con Ubuntu para la ejecución
+
+variables:
+  JAVA_HOME: '/usr/lib/jvm/java-23-openjdk-amd64'
+  MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
+  ARTIFACT_NAME: 'spring-boot-app'
+
+stages:
+- stage: Build
+  displayName: 'Compilación y Pruebas'
+  jobs:
+  - job: Build
+    steps:
+    - task: UseJavaVersion@1
+      inputs:
+        versionSpec: '23'
+        jdkArchitecture: 'x64'
+
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'clean package'
+        options: '-Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+        javaHomeOption: 'Path'
+        jdkDirectory: '$(JAVA_HOME)'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: 'drop'
+
+- stage: Deploy
+  displayName: 'Desplegar en Azure Web App'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - deployment: Deploy
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: '<NOMBRE_DE_TU_SERVICE_CONNECTION>'
+              appName: '<NOMBRE_DE_TU_APP_AZURE>'
+              package: '$(Pipeline.Workspace)/drop/*.jar'
+              runtimeStack: 'JAVA|23-java23'
