@@ -2,11 +2,13 @@ options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
 
 steps:
+  # Paso 1: Compilar la app con Maven
   - name: 'gcr.io/cloud-builders/mvn'
+    entrypoint: 'mvn'
     args: ['clean', 'package']
 
+  # Paso 2: Desplegar en App Engine
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['app', 'deploy']
-    dir: '.'  # Asegúrate de que el archivo app.yaml esté en la raíz
+    args: ['app', 'deploy', '--quiet', 'app.yaml']
 
 timeout: 900s
